@@ -1,4 +1,4 @@
-import fastfeedparser
+import feedparser
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -12,7 +12,9 @@ from db import save_full_news, get_full_news
 
 def fetch_rss_feed(url):
     try:
-        feed = fastfeedparser.parse(url)
+        feed = feedparser.parse(url)
+        if feed.bozo and feed.bozo_exception:
+            print(f"⚠️ Ошибка парсинга RSS: {feed.bozo_exception}")
         return feed
     except Exception as e:
         print(f"❌ Ошибка загрузки RSS {url}: {e}")
@@ -182,13 +184,6 @@ def extract_full_text(link):
     
     return None
 
-def get_entry_value(entry, *keys, default=''):
-    for key in keys:
-        val = getattr(entry, key, None)
-        if val:
-            return val
-    return default
-
 def process_rss_feed_for_source(source_key, source_config):
     all_news = []
     
@@ -200,12 +195,12 @@ def process_rss_feed_for_source(source_key, source_config):
             continue
         
         for entry in feed.entries[:10]:
-            link = get_entry_value(entry, 'link')
+            link = entry.get('link', '')
             if not link:
                 continue
             
-            title = get_entry_value(entry, 'title', default='Без заголовка')
-            description = get_entry_value(entry, 'description', 'summary', 'content', default='')
+            title = entry.get('title', 'Без заголовка')
+            description = entry.get('description', '') or entry.get('summary', '')
             
             existing = get_full_news(link)
             if existing:
