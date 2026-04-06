@@ -15,7 +15,8 @@ def send_message(chat_id, text, attachments=None, format="markdown"):
         payload["attachments"] = attachments
     
     headers = {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json",
         "Authorization": f"Bearer {MAX_BOT_TOKEN}"
     }
     
@@ -112,7 +113,10 @@ def delete_message(chat_id, message_id):
     url = f"{MAX_API_URL}/deleteMessage"
     
     payload = {"chat_id": chat_id, "message_id": message_id}
-    headers = {"Authorization": f"Bearer {MAX_BOT_TOKEN}"}
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": f"Bearer {MAX_BOT_TOKEN}"
+    }
     
     try:
         requests.post(url, json=payload, headers=headers, timeout=10)
@@ -126,7 +130,10 @@ def answer_callback(callback_id, text=None):
     if text:
         payload["text"] = text
     
-    headers = {"Authorization": f"Bearer {MAX_BOT_TOKEN}"}
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": f"Bearer {MAX_BOT_TOKEN}"
+    }
     
     try:
         requests.post(url, json=payload, headers=headers, timeout=10)
@@ -140,13 +147,41 @@ def get_updates(offset=None):
     if offset:
         params["offset"] = offset
     
-    headers = {"Authorization": f"Bearer {MAX_BOT_TOKEN}"}
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {MAX_BOT_TOKEN}"
+    }
     
     try:
         response = requests.get(url, params=params, headers=headers, timeout=35)
-        if response.status_code == 200:
-            return response.json().get("result", [])
+        
+        if response.status_code != 200:
+            print(f"❌ Ошибка getUpdates: статус {response.status_code}")
+            return []
+        
+        content_type = response.headers.get('Content-Type', '')
+        
+        if 'application/json' in content_type:
+            try:
+                result = response.json()
+                return result.get("result", [])
+            except json.JSONDecodeError as e:
+                print(f"❌ Ошибка JSON: {e}")
+                return []
+        else:
+            text = response.text
+            try:
+                return json.loads(text).get("result", [])
+            except:
+                print(f"❌ Ошибка парсинга ответа")
+                return []
+                
+    except requests.exceptions.ConnectionError as e:
+        print(f"❌ Ошибка соединения: {e}")
+        return []
+    except requests.exceptions.Timeout as e:
+        print(f"❌ Таймаут: {e}")
         return []
     except Exception as e:
-        print(f"❌ Ошибка getUpdates: {e}")
+        print(f"❌ Ошибка getUpdates: {type(e).__name__}: {e}")
         return []
