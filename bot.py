@@ -395,6 +395,10 @@ def main():
     
     init_db()
     
+    health_thread = threading.Thread(target=run_health_server, daemon=True)
+    health_thread.start()
+    print(f"✅ HTTP-сервер для пингов запущен на порту {os.environ.get('PORT', 8000)}")
+    
     news_thread = threading.Thread(target=news_check_loop, daemon=True)
     news_thread.start()
     print("✅ Поток проверки новостей запущен")
@@ -403,11 +407,7 @@ def main():
     poll_thread.start()
     print("✅ Поток обработки сообщений запущен")
     
-    health_thread = threading.Thread(target=run_health_server, daemon=True)
-    health_thread.start()
-    print(f"✅ Health server запущен на порту {os.environ.get('PORT', 8000)}")
-    
-    print("🤖 Бот работает...")
+    print("🤖 Бот работает... Ожидание команд")
     print("=" * 50)
     
     try:
