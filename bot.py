@@ -1,6 +1,8 @@
 import time
 import threading
+import os
 from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from config import NEWS_CHECK_INTERVAL, CATEGORIES_LEVEL1, PLATFORMS_LEVEL2
 from db import (
@@ -14,6 +16,24 @@ from max_api import (
     get_updates, delete_message
 )
 from rss_parser import process_all_rss_feeds
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/' or self.path == '/health':
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'OK')
+        else:
+            self.send_response(404)
+        self.end_headers()
+    
+    def log_message(self, format, *args):
+        pass
+
+def run_health_server():
+    port = int(os.environ.get('PORT', 8000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
 
 last_update_id = 0
 
@@ -382,6 +402,10 @@ def main():
     poll_thread = threading.Thread(target=poll_updates, daemon=True)
     poll_thread.start()
     print("✅ Поток обработки сообщений запущен")
+    
+    health_thread = threading.Thread(target=run_health_server, daemon=True)
+    health_thread.start()
+    print(f"✅ Health server запущен на порту {os.environ.get('PORT', 8000)}")
     
     print("🤖 Бот работает...")
     print("=" * 50)
